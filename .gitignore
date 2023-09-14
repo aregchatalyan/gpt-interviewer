@@ -1,0 +1,8 @@
+node_modules
+package-lock.json
+
+.env*
+!.env.example
+
+voices/*.ogg
+voices/*.mp3
