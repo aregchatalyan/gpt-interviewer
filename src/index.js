@@ -8,6 +8,10 @@ import { textToSpeech } from './services/speech.service.js';
 
 const bot = new Telegraf(config.TG_TOKEN);
 
+bot.command('start', async (ctx) => {
+  await ctx.reply(code('Waiting for your voice or text message'));
+});
+
 bot.on(message('voice'), async (ctx) => {
   try {
     await ctx.reply(code('Waiting for an answer...'));
