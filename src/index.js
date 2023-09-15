@@ -1,4 +1,4 @@
-import { Telegraf } from 'telegraf';
+import { session, Telegraf } from 'telegraf';
 import { code } from 'telegraf/format';
 import { message } from 'telegraf/filters';
 import { config } from './config.js';
@@ -8,7 +8,20 @@ import { textToSpeech } from './services/speech.service.js';
 
 const bot = new Telegraf(config.TG_TOKEN);
 
+bot.use(session());
+
+const INITIAL_SESSION = {
+  messages: []
+}
+
+bot.command('new', async (ctx) => {
+  ctx.session = INITIAL_SESSION;
+  await ctx.reply('I\'m waiting for your questions :)');
+});
+
 bot.on(message('voice'), async (ctx) => {
+  ctx.session ??= INITIAL_SESSION;
+
   try {
     await ctx.reply(code('Waiting for an answer...'));
 
@@ -23,10 +36,17 @@ bot.on(message('voice'), async (ctx) => {
 
     await ctx.reply(code(`Your request: ${ text }`));
 
-    const response = await openai.chat([ {
+    ctx.session.messages.push({
       content: text,
       role: openai.roles.USER
-    } ]);
+    });
+
+    const response = await openai.chat(ctx.session.messages);
+
+    ctx.session.messages.push({
+      content: response.content,
+      role: openai.roles.ASSISTANT
+    });
 
     await ctx.reply(response.content);
 
@@ -42,10 +62,22 @@ bot.on(message('voice'), async (ctx) => {
 });
 
 bot.on(message('text'), async (ctx) => {
+  ctx.session ??= INITIAL_SESSION;
+
   try {
     await ctx.reply(code('Waiting for an answer...'));
 
-    const response = await openai.chat(ctx.message.text);
+    ctx.session.messages.push({
+      content: ctx.message.text,
+      role: openai.roles.USER
+    });
+
+    const response = await openai.chat(ctx.session.messages);
+
+    ctx.session.messages.push({
+      content: response.content,
+      role: openai.roles.ASSISTANT
+    });
 
     await ctx.reply(response.content);
   } catch (e) {
