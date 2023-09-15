@@ -4,8 +4,8 @@ import { config } from '../config.js';
 
 class OpenAi {
   roles = {
-    USER:      'user',
-    SYSTEM:    'system',
+    USER: 'user',
+    SYSTEM: 'system',
     ASSISTANT: 'assistant'
   }
 
@@ -29,7 +29,7 @@ class OpenAi {
   async transcription(filepath) {
     try {
       const response = await this.openai.audio.transcriptions.create({
-        file:  fs.createReadStream(filepath),
+        file: fs.createReadStream(filepath),
         model: 'whisper-1'
       });
 

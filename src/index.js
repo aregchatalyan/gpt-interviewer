@@ -1,26 +1,14 @@
-import { Telegraf, session } from 'telegraf';
+import { Telegraf } from 'telegraf';
 import { code } from 'telegraf/format';
 import { message } from 'telegraf/filters';
 import { config } from './config.js';
 import { openai } from './services/openai.service.js';
 import { oggToMp3 } from './services/convert.service.js';
+import { textToSpeech } from './services/speech.service.js';
 
 const bot = new Telegraf(config.TG_TOKEN);
 
-bot.use(session());
-
-const INITIAL_SESSION = {
-  messages: []
-}
-
-bot.command('new', async (ctx) => {
-  ctx.session = INITIAL_SESSION;
-  await ctx.reply('I\'m waiting for your questions :)');
-});
-
 bot.on(message('voice'), async (ctx) => {
-  ctx.session ??= INITIAL_SESSION;
-
   try {
     await ctx.reply(code('Waiting for an answer...'));
 
@@ -35,41 +23,29 @@ bot.on(message('voice'), async (ctx) => {
 
     await ctx.reply(code(`Your request: ${ text }`));
 
-    ctx.session.messages.push({
+    const response = await openai.chat([ {
       content: text,
-      role:    openai.roles.USER
-    });
-
-    const response = await openai.chat(ctx.session.messages);
-
-    ctx.session.messages.push({
-      content: response.content,
-      role:    openai.roles.ASSISTANT
-    });
+      role: openai.roles.USER
+    } ]);
 
     await ctx.reply(response.content);
+
+    const source = await textToSpeech.toSpeech(response.content);
+
+    await ctx.sendAudio(
+      { source },
+      { title: 'Reply from Assistant', performer: 'ChatGPT' }
+    );
   } catch (e) {
     console.error('Error: Voice Message:', e.message);
   }
 });
 
 bot.on(message('text'), async (ctx) => {
-  ctx.session ??= INITIAL_SESSION;
-
   try {
     await ctx.reply(code('Waiting for an answer...'));
 
-    ctx.session.messages.push({
-      content: ctx.message.text,
-      role:    openai.roles.USER
-    });
-
-    const response = await openai.chat(ctx.session.messages);
-
-    ctx.session.messages.push({
-      content: response.content,
-      role:    openai.roles.ASSISTANT
-    });
+    const response = await openai.chat(ctx.message.text);
 
     await ctx.reply(response.content);
   } catch (e) {
