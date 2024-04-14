@@ -46,12 +46,17 @@ bot.on(message('voice'), async (ctx) => {
 });
 
 bot.on(message('text'), async (ctx) => {
+  console.log(ctx.message);
+
   try {
     await ctx.reply(code('Waiting for an answer...'));
 
-    const response = await openai.chat(ctx.message.text);
+    const response = await openai.chat([ {
+      content: ctx.message.text,
+      role: openai.roles.USER
+    } ]);
 
-    await ctx.reply(response.content);
+    await ctx.reply(response?.content);
   } catch (e) {
     console.error('Error: Voice Message:', e.message);
   }
